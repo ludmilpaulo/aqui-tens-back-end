@@ -9,18 +9,6 @@ from django.dispatch import receiver
 from django.contrib.auth.models import AbstractUser
 
 
-#####################################################
-
-
-
-
-
-
-
-
-
-
-####################################################################################
 
 class ImageField(models.ImageField):
     def value_to_string(self, obj): # obj is Model instance, in this case, obj is 'Class'
@@ -58,11 +46,11 @@ class ProductCategory(models.Model):
 class Shop(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, verbose_name='usuário', blank=True)
     shop_category = models.ForeignKey(ShopCategory, related_name='shops', on_delete=models.CASCADE, null=True)
-    name = models.CharField(max_length=500, verbose_name='Nome do restaurante')
-    phone = models.CharField(max_length=500, verbose_name='Telefone do restaurante')
+    name = models.CharField(max_length=500, verbose_name='Nome da loja')
+    phone = models.CharField(max_length=500, verbose_name='Telefone da loja')
     address = models.CharField(max_length=500, verbose_name='Endereço da loja')
-    logo = models.ImageField(upload_to='restaurant_logo/', blank=False, verbose_name='Logotipo do restaurante')
-    Shop_license = models.FileField(upload_to='vendor/license', blank=True, verbose_name='Licenca do restaurante')
+    logo = models.ImageField(upload_to='restaurant_logo/', blank=False, verbose_name='Logotipa loja')
+    Shop_license = models.FileField(upload_to='vendor/license', blank=True, verbose_name='Licenca da loja')
     barnner = models.BooleanField(default=False)
     is_approved = models.BooleanField(default=False)
 
