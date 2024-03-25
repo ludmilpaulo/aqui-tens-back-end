@@ -67,25 +67,24 @@ class GetShopsByCategoryView(generics.ListAPIView):
 
 
 
-from django.http import JsonResponse
-from .models import Product
 
-from django.core.serializers import serialize
-from django.http import JsonResponse
-
+@api_view(['GET'])
 def get_products_by_shop(request):
     if request.method == 'GET':
         shop_id = request.GET.get('shop_id')
         if shop_id:
             try:
                 products = Product.objects.filter(seller_id=shop_id)
-                serialized_products = ProductSerializer(products, many=True).data
-                return JsonResponse(serialized_products, safe=False)
+                # Pass request object to serializer context
+                serialized_products = ProductSerializer(products, many=True, context={'request': request}).data
+                return Response(serialized_products)
             except ValueError:
-                return JsonResponse({'error': 'Invalid shop ID'}, status=400)
+                return Response({'error': 'Invalid shop ID'}, status=400)
         else:
-            return JsonResponse({'error': 'Shop ID is required'}, status=400)
+            return Response({'error': 'Shop ID is required'}, status=400)
     else:
-        return JsonResponse({'error': 'Only GET method is allowed'}, status=405)
+        return Response({'error': 'Only GET method is allowed'}, status=405)
+
+
 
 

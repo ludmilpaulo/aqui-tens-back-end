@@ -148,12 +148,15 @@ class Shop(models.Model):
         return self.name 
 
 
+class Image(models.Model):
+    image = models.ImageField(upload_to='product_images/')
+
 class Product(models.Model):
     category = models.ForeignKey(ProductCategory, related_name='products', on_delete=models.CASCADE, null=True)
     price = models.DecimalField(max_digits=10, decimal_places=2)
     title = models.CharField(max_length=200)
-    images = models.ImageField(upload_to='product/', blank=False, verbose_name='produtos loja')  # Assuming images are stored as a list of strings (URLs)
-    rating = models.IntegerField()  # Assuming rating is an integer field
+    images = models.ManyToManyField(Image)  # Many-to-many relationship with Image model
+    rating = models.IntegerField()
     seller = models.ForeignKey(Shop, on_delete=models.CASCADE)
     description = models.TextField()
    
