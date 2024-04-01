@@ -27,6 +27,7 @@ from django.contrib.auth.models import AbstractUser, Group, Permission
 from django.db import models
 
 class User(AbstractUser):
+    email = models.EmailField(unique=True)
     is_customer = models.BooleanField(default=False)
     is_driver = models.BooleanField(default=False)
 

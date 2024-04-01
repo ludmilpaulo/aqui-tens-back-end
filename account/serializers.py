@@ -10,16 +10,17 @@ from django.utils import timezone
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 
-from shop.authentication import User
-from shop.models import Customer, Driver
-
-from .models import *
+#from shop.authentication import User
+from django.contrib.auth import get_user_model
+#User = get_user_model()
+from shop.models import Customer, Driver, User
 
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
-        model=User
-        fields=['username', 'email', 'is_customer']
+        model = User  # Use the custom User model
+        fields = ['username', 'email', 'is_customer']
+
 
 class DriverSignupSerializer(serializers.ModelSerializer):
     password2=serializers.CharField(style={"input_type":"password"}, write_only=True)

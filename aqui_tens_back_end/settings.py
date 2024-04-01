@@ -33,6 +33,7 @@ INSTALLED_APPS = [
     'rest_framework.authtoken',
     'shop',
     'account',
+    'order',
 ]
 
 REST_FRAMEWORK = {
@@ -51,7 +52,7 @@ REST_FRAMEWORK = {
     ],
 }
 
-#AUTH_USER_MODEL="shop.User"
+AUTH_USER_MODEL="shop.User"
 
 
 MIDDLEWARE = [

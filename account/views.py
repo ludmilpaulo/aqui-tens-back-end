@@ -85,7 +85,6 @@ class CustomerSignupView(generics.CreateAPIView):
 
         return Response(data, status=status.HTTP_201_CREATED)
 
-
 class CustomAuthToken(ObtainAuthToken):
     def post(self, request, *args, **kwargs):
         serializer=self.serializer_class(data=request.data, context={'request':request})
@@ -146,3 +145,26 @@ def customer_update_profile(request, format=None):
     customer_user.save()
 
     return JsonResponse({"status": "Os Seus Dados enviados com sucesso"})
+
+
+class ForgotPasswordView(APIView):
+    def post(self, request):
+        email = request.data.get('email')
+        user = User.objects.filter(email=email).first()
+
+        if user:
+            uid = urlsafe_base64_encode(force_bytes(user.pk))
+            token = default_token_generator.make_token(user)
+            reset_link = f'http://127.0.0.1:8000/reset-password/{uid}/{token}/'
+
+            send_mail(
+                'Reset your password',
+                f'Click the following link to reset your password: {reset_link}',
+                'from@example.com',
+                [email],
+                fail_silently=False,
+            )
+
+            return Response({'message': 'Password reset link sent successfully'}, status=status.HTTP_200_OK)
+        else:
+            return Response({'error': 'User with this email does not exist'}, status=status.HTTP_404_NOT_FOUND)
