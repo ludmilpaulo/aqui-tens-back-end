@@ -1,3 +1,9 @@
 from django.contrib import admin
+from .models import Order, OrderDetails
 
-# Register your models here.
+@admin.register(Order)
+class OrderAdmin(admin.ModelAdmin):
+    pass
+@admin.register(OrderDetails)
+class OrderDetailsAdmin(admin.ModelAdmin):
+    pass

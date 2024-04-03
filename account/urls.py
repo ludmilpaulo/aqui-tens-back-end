@@ -15,6 +15,7 @@ urlpatterns = [
     path('signup/', views.CustomerSignupView.as_view()),
     path('login/',views.CustomAuthToken.as_view(), name='auth-token'),
     path('logout/', views.LogoutView.as_view(), name='logout-view'),
+    path('fornecedor/', views.fornecedor_sign_up),
     path('forgot-password/', views.ForgotPasswordView.as_view(), name='forgot-password'),
     ##############################################
 ] 

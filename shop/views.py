@@ -1,10 +1,23 @@
-from rest_framework import viewsets
-from rest_framework.response import Response
 from django.http import JsonResponse
-from rest_framework import generics
-from rest_framework.decorators import api_view
-from .models import ShopCategory, Shop, Product
-from .serializers import ShopCategorySerializer, ShopSerializer, ProductSerializer
+from django.shortcuts import get_object_or_404
+
+from .permissions import *
+
+from rest_framework import status, generics, viewsets
+from rest_framework.response import Response
+from rest_framework.decorators import *
+from rest_framework.authtoken.models import Token
+from rest_framework.generics import ListAPIView
+
+
+#from django.contrib.auth.models import User
+from rest_framework.parsers import *
+from django.contrib.auth import get_user_model
+User = get_user_model()
+
+
+from .models import Image, ProductCategory, ShopCategory, Shop, Product
+from .serializers import ProductCategorySerializer, ShopCategorySerializer, ShopSerializer, ProductSerializer
 
 class ShopCategoryViewSet(viewsets.ModelViewSet):
     queryset = ShopCategory.objects.all()
@@ -84,6 +97,195 @@ def get_products_by_shop(request):
             return Response({'error': 'Shop ID is required'}, status=400)
     else:
         return Response({'error': 'Only GET method is allowed'}, status=405)
+    
+
+def get_fornecedor(request):
+    usuario_id = request.GET.get('user_id')
+
+    # Check if the usuario_id parameter is provided
+    if usuario_id:
+        fornecedores = Shop.objects.filter(user=usuario_id)
+    else:
+        fornecedores = Shop.objects.all()
+
+    serialized_data = ShopSerializer(
+        fornecedores,
+        many=True,
+        context={"request": request}
+    ).data
+
+    return JsonResponse({"fornecedor": serialized_data})
+
+
+class ProdutoListView(ListAPIView):
+    serializer_class = ProductSerializer
+
+    def get_queryset(self):
+        user_id = self.request.query_params.get('user_id', None)  # Get user_id from the request parameters
+
+        # Get the user object from the user_id
+        user = get_object_or_404(User, id=user_id)
+
+        return Product.objects.filter(shop=user.shop).order_by("-id")
+
+
+from django.core.exceptions import ValidationError
+
+@api_view(["GET"])
+def produto_list_view(request, user_id):
+    user = get_object_or_404(User, id=user_id)
+    products = Product.objects.filter(shop=user.shop).order_by("-id")
+    serializer = ProductSerializer(products, many=True)
+    return Response(serializer.data)
+
+
+    
+
+def shop_get_products(request):
+    access_token = request.GET.get('access_token')
+
+    if access_token:
+        try:
+            # Retrieve the user associated with the access token
+            user = Token.objects.get(key=access_token).user
+
+            # Retrieve the shop associated with the user
+            shop = user.shop
+
+            # Retrieve products associated with the shop
+            products = Product.objects.filter(shop=shop)
+
+            # Serialize the products
+            serialized_products = ProductSerializer(products, many=True, context={"request": request}).data
+
+            return JsonResponse({"products": serialized_products})
+        except Token.DoesNotExist:
+            return JsonResponse({"error": "Invalid access token"}, status=400)
+        except AttributeError:
+            return JsonResponse({"error": "User or shop not found"}, status=404)
+    else:
+        return JsonResponse({"error": "Access token is required"}, status=400)
+
+
+
+class CategoriaListCreate(generics.ListCreateAPIView):
+    queryset = ProductCategory.objects.all()
+    serializer_class = ProductCategorySerializer
+    
+    
+    
+@api_view(['DELETE'])
+#@permission_classes([IsAuthenticated])
+def delete_product(request, pk):
+    try:
+        # Authenticate the user using the user_id from the request
+        user_id = request.data.get('user_id')
+        if not user_id:
+            return Response({'error': 'user_id not provided'}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = User.objects.get(pk=user_id)
+
+        # Check if the user has permission to delete the product
+        product = Product.objects.get(pk=pk)
+        if not hasattr(user, 'shop') or user.shop != product.shop:
+            return Response({'error': 'User does not have permission to delete this product'}, status=status.HTTP_403_FORBIDDEN)
+
+        # User is authenticated and has permission, delete the product
+        product.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    except User.DoesNotExist:
+        return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+    except Product.DoesNotExist:
+        return Response({'error': 'Product not found'}, status=status.HTTP_404_NOT_FOUND)
+    
+    
+    
+@api_view(['PUT'])
+def update_product(request, pk):
+    try:
+        product = Product.objects.get(pk=pk)
+
+        # Check if the user has permission to update the product
+        user_id = request.data.get('user_id')
+        if not user_id:
+            return Response({'error': 'user_id not provided'}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = User.objects.get(pk=user_id)
+        if not hasattr(user, 'shop') or user.shop != product.shop:
+            return Response({'error': 'User does not have permission to update this product'}, status=status.HTTP_403_FORBIDDEN)
+
+        # Update the product
+        product.title = request.data.get('title', product.title)
+        product.description = request.data.get('description', product.description)
+        product.price = request.data.get('price', product.price)
+        product.save()
+
+        return Response({'message': 'Product updated successfully'}, status=status.HTTP_200_OK)
+
+    except Product.DoesNotExist:
+        return Response({'error': 'Product not found'}, status=status.HTTP_404_NOT_FOUND)
+    except User.DoesNotExist:
+        return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
+
+from django.core.files.uploadedfile import InMemoryUploadedFile
+from io import BytesIO
+
+@api_view(["POST"])
+@parser_classes([JSONParser, MultiPartParser, FormParser, FileUploadParser])
+def fornecedor_add_product(request, format=None):
+    data = request.data
+
+    print("Received data:", data)  # Print the received data for debugging
+
+    try:
+        # Retrieve the user associated with the access token
+        access = Token.objects.get(key=data['access_token']).user
+
+        # Retrieve the restaurant associated with the user
+        shop = access.shop
+
+        # Retrieve or create the category based on the slug
+        category_slug = data.get('category')  # Use get() method to avoid MultiValueDictKeyError
+        if category_slug:
+            try:
+                category = ProductCategory.objects.get(slug=category_slug)
+            except ProductCategory.DoesNotExist:
+                category = ProductCategory.objects.create(slug=category_slug, name=category_slug)
+        else:
+            # Handle the case where category is not provided in the request data
+            # You might raise an error or set a default category
+            return Response({'error': 'Category is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Create a Product instance and associate it with the category, shop, and other fields
+        product = Product.objects.create(
+            category=category,
+            price=data['price'],
+            title=data['title'],
+            shop=shop,
+            description=data['description']
+        )
+
+        # Save uploaded images and associate them with the product
+        images = []
+        for file_field in request.FILES.values():
+            # Ensure that the uploaded file is an image
+            if isinstance(file_field, InMemoryUploadedFile):
+                # Create an Image instance and save it to the database
+                image = Image.objects.create(image=file_field)
+                images.append(image)
+
+        # Associate the images with the product
+        product.images.set(images)
+
+        return Response({"status": "Os Seus Dados enviados com sucesso"}, status=status.HTTP_201_CREATED)
+
+    except Token.DoesNotExist:
+        return Response({'error': 'Invalid access token'}, status=status.HTTP_401_UNAUTHORIZED)
+
+    except User.DoesNotExist:
+        return Response
 
 
 

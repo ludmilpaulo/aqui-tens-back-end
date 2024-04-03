@@ -34,7 +34,7 @@ class Order(models.Model):
         verbose_name_plural ='Pedidos'
 
     def __str__(self):
-        return str(self.id)
+        return str(self.shop)
 
 
 
@@ -63,7 +63,7 @@ class OrderDetails(models.Model):
 
 
     def __str__(self):
-        return str(self.id)
+        return str(self.product)
 
 
 
