@@ -87,7 +87,7 @@ def get_products_by_shop(request):
         shop_id = request.GET.get('shop_id')
         if shop_id:
             try:
-                products = Product.objects.filter(seller_id=shop_id)
+                products = Product.objects.filter(shop_id=shop_id)
                 # Pass request object to serializer context
                 serialized_products = ProductSerializer(products, many=True, context={'request': request}).data
                 return Response(serialized_products)
@@ -233,29 +233,29 @@ from django.core.files.uploadedfile import InMemoryUploadedFile
 from io import BytesIO
 
 @api_view(["POST"])
-@parser_classes([JSONParser, MultiPartParser, FormParser, FileUploadParser])
+@parser_classes([MultiPartParser])
 def fornecedor_add_product(request, format=None):
     data = request.data
+    img = [file for key, file in data.items() if key.startswith('images[')]
 
     print("Received data:", data)  # Print the received data for debugging
+    print("Received images:", img)  # Print the received data for debugging
 
     try:
         # Retrieve the user associated with the access token
         access = Token.objects.get(key=data['access_token']).user
 
-        # Retrieve the restaurant associated with the user
+        # Retrieve the shop associated with the user
         shop = access.shop
 
         # Retrieve or create the category based on the slug
-        category_slug = data.get('category')  # Use get() method to avoid MultiValueDictKeyError
+        category_slug = data.get('category')
         if category_slug:
             try:
                 category = ProductCategory.objects.get(slug=category_slug)
             except ProductCategory.DoesNotExist:
                 category = ProductCategory.objects.create(slug=category_slug, name=category_slug)
         else:
-            # Handle the case where category is not provided in the request data
-            # You might raise an error or set a default category
             return Response({'error': 'Category is required'}, status=status.HTTP_400_BAD_REQUEST)
 
         # Create a Product instance and associate it with the category, shop, and other fields
@@ -269,24 +269,77 @@ def fornecedor_add_product(request, format=None):
 
         # Save uploaded images and associate them with the product
         images = []
-        for file_field in request.FILES.values():
-            # Ensure that the uploaded file is an image
-            if isinstance(file_field, InMemoryUploadedFile):
-                # Create an Image instance and save it to the database
-                image = Image.objects.create(image=file_field)
-                images.append(image)
+        for file_field in img:
+            # Create an Image instance and save it to the database
+            image = Image.objects.create(image=file_field)
+            images.append(image)
 
         # Associate the images with the product
         product.images.set(images)
 
-        return Response({"status": "Os Seus Dados enviados com sucesso"}, status=status.HTTP_201_CREATED)
+        return Response({"status": "Product added successfully"}, status=status.HTTP_201_CREATED)
 
     except Token.DoesNotExist:
         return Response({'error': 'Invalid access token'}, status=status.HTTP_401_UNAUTHORIZED)
 
     except User.DoesNotExist:
-        return Response
+        return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
+
+    
+    
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from rest_framework.parsers import MultiPartParser
 
 
 
+class FornecedorAddProduct(APIView):
+    parser_classes = [MultiPartParser]
+
+    def post(self, request, format=None):
+        data = request.data
+
+        try:
+            # Retrieve the user associated with the access token
+            access_token = data.get('access_token')
+            user = Token.objects.get(key=access_token).user
+
+            # Retrieve the shop associated with the user
+            shop = user.shop
+
+            # Retrieve or create the category based on the slug
+            category_slug = data.get('category')
+            if category_slug:
+                category, created = ProductCategory.objects.get_or_create(slug=category_slug, defaults={'name': category_slug})
+            else:
+                return Response({'error': 'Category is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Create a Product instance and associate it with the category, shop, and other fields
+            product = Product.objects.create(
+                category=category,
+                price=data['price'],
+                title=data['title'],
+                shop=shop,
+                description=data['description']
+            )
+
+            # Save uploaded images and associate them with the product
+            images = []
+            for file_field in request.FILES.getlist('images'):
+                # Create an Image instance and save it to the database
+                image = Image.objects.create(image=file_field)
+                images.append(image)
+
+            # Associate the images with the product
+            product.images.set(images)
+
+            return Response({"status": "Product added successfully"}, status=status.HTTP_201_CREATED)
+
+        except Token.DoesNotExist:
+            return Response({'error': 'Invalid access token'}, status=status.HTTP_401_UNAUTHORIZED)
+
+        except User.DoesNotExist:
+            return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
 

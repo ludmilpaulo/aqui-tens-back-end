@@ -78,6 +78,7 @@ class CustomerSignupView(generics.CreateAPIView):
         # Construct response data
         data = {
             "user_id": user.pk,
+            "token": Token.objects.get(user=user).key,
             "message": "Conta criada com sucesso",
             "username": user.username,
             "status": status.HTTP_201_CREATED,
@@ -176,16 +177,28 @@ class ForgotPasswordView(APIView):
 @parser_classes([MultiPartParser])
 @permission_classes([AllowAny])
 def fornecedor_sign_up(request, format=None):
+    print("Received data:", request.data) 
     if request.method == "POST":
         username = request.data.get("username")
         email = request.data.get("email")
         password = request.data.get("password")
+        shop_category_slug = request.data.get("shop_category") 
 
         if not username or not password:
             return Response({"error": "Nome de usuário e senha são necessários."}, status=status.HTTP_400_BAD_REQUEST)
 
         if User.objects.filter(username=username).exists():
             return Response({"error": "O nome de usuário já existe."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not shop_category_slug:
+            return Response({'error': 'Categoria é necessária'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            # Filter the category by slug
+            shop_category = ShopCategory.objects.get(slug=shop_category_slug)
+        except ShopCategory.DoesNotExist:
+            return Response({"error": "A categoria fornecida não existe."}, status=status.HTTP_400_BAD_REQUEST)
+
 
         # Create the User object
         new_user = User.objects.create_user(username=username, password=password, email=email)
@@ -204,6 +217,7 @@ def fornecedor_sign_up(request, format=None):
         if serializer.is_valid():
             # Create the Restaurant object with the user field set
             serializer.validated_data['user'] = new_user
+            serializer.validated_data['shop_category'] = shop_category  # Assign shop category object
             shop = serializer.save()
 
             # Ensure that the logo field is set in the restaurant object
@@ -211,7 +225,6 @@ def fornecedor_sign_up(request, format=None):
                 shop.logo = logo
                 shop.save()
 
-          
             shop_data = ShopSerializer(shop, context={'request': request}).data
 
             # Authenticate the user after saving the data
@@ -223,9 +236,10 @@ def fornecedor_sign_up(request, format=None):
                     "message": "Conta criada com sucesso",
                     "fornecedor_id": shop_data,  # Include the serialized restaurant data
                     'username': user.username,
-                    "status": "201"
+                    "status": status.HTTP_201_CREATED
                 }, status=status.HTTP_201_CREATED)
             else:
                 return Response({"error": "Falha na autenticação."}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+

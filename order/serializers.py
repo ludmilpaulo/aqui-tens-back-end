@@ -41,7 +41,7 @@ class OrderShopSerializer(serializers.ModelSerializer):
 class OrderProductSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
-        fields = ("id", "name", "price")
+        fields = ("id", "title", "price")
 
 
 class OrderDetailsSerializer(serializers.ModelSerializer):
@@ -55,7 +55,7 @@ class OrderDetailsSerializer(serializers.ModelSerializer):
 class OrderSerializer(serializers.ModelSerializer):
     customer = OrderCustomerSerializer()
     driver = OrderDriverSerializer()
-    restaurant = OrderShopSerializer()
+    shop = OrderShopSerializer()
     order_details = OrderDetailsSerializer(many=True)
     status = serializers.ReadOnlyField(source="get_status_display")
 

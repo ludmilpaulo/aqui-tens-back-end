@@ -150,10 +150,11 @@ class Shop(models.Model):
 
 
 class Image(models.Model):
-    image = models.ImageField(upload_to='product_images/')
+    image = models.ImageField(max_length=3000, default=None, blank=True, upload_to='product_images/')
     
     def __str__(self):
-        return self.image.name   
+        return self.image.name
+
 
 class Product(models.Model):
     category = models.ForeignKey(ProductCategory, related_name='products', on_delete=models.CASCADE, null=True)

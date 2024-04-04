@@ -52,6 +52,7 @@ AccessToken = Token
 @api_view(['POST'])
 def customer_add_order(request):
     data = request.data
+    print("recieved data", data)
     access = Token.objects.get(key=data['access_token']).user
 
     # Get profile
@@ -159,3 +160,42 @@ def customer_get_order_history(request):
                                     }).data
 
     return JsonResponse({"order_history": order_history})
+
+
+
+@api_view(['POST'])
+def shop_order(request, format=None):
+     # Print the user to verify if it's retrieved correctly
+    data = request.data
+    user = get_object_or_404(User, id=data['user_id'])
+    print(data)
+
+    try:
+        order = Order.objects.get(id=data["id"],
+                                shop=user.shop)
+
+        if order.status == Order.COOKING:
+            order.status = Order.READY
+            order.save()
+
+        orders = Order.objects.filter(
+        restaurant=user.shop).order_by("-id")
+
+        return Response({'message': 'Order status updated to READY'}, status=status.HTTP_200_OK)
+
+    except Order.DoesNotExist:
+        return Response({'error': 'Order not found'}, status=status.HTTP_404_NOT_FOUND)
+
+
+class OrderListView(ListAPIView):
+    serializer_class = OrderSerializer
+
+    def get_queryset(self):
+        user_id = self.request.query_params.get('user_id', None)  # Get user_id from the request parameters
+
+        # Get the user object from the user_id
+        user = get_object_or_404(User, id=user_id)
+
+        return Order.objects.filter(shop=user.shop).order_by("-id")
+
+# views.py

@@ -1,6 +1,6 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import produto_list_view, update_product, delete_product, CategoriaListCreate, shop_get_products, fornecedor_add_product, ProdutoListView, get_fornecedor, ShopCategoryViewSet, ShopViewSet, get_products_by_shop, get_shops_by_category, GetShopsByCategoryView
+from .views import FornecedorAddProduct, produto_list_view, update_product, delete_product, CategoriaListCreate, shop_get_products, fornecedor_add_product, ProdutoListView, get_fornecedor, ShopCategoryViewSet, ShopViewSet, get_products_by_shop, get_shops_by_category, GetShopsByCategoryView
 
 router = DefaultRouter()
 router.register('shop-categories', ShopCategoryViewSet)
